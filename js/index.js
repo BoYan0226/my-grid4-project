@@ -7,8 +7,22 @@ const grids = document.querySelectorAll('.grid');
 // wall uses virtualScroll, so this reset is visually seamless.
 const RESET_SCROLL_Y = 6000;
 const RESET_BUFFER = 1800;
-const AUTO_SCROLL_SPEED = 28; // px / second. Raise this if you want faster auto scroll.
+
+const AUTO_SCROLL_SPEED = 70; // px / second. Raise this if you want faster auto scroll.
 const WALL_SCROLL_SPEED = 0.72;
+
+// 滚轮停止后多久允许自动滚动恢复，单位 ms
+const WHEEL_PAUSE_TIME = 0;
+
+// 滚轮惯性参数
+const WHEEL_POWER = 0.18;
+const WHEEL_FRICTION = 0.9;
+const WHEEL_MIN_SPEED = 0.15;
+const WHEEL_MAX_SPEED = 60;
+
+// 图片到顶端和底端时的透明度
+const EDGE_OPACITY = 0.9;
+const CENTER_OPACITY = 1;
 
 let virtualScroll = 0;
 let lastScrollY = 0;
@@ -16,13 +30,33 @@ let lastFrameTime = 0;
 let autoRemainder = 0;
 let isResettingScroll = false;
 
+let isAutoPaused = false;
+let wheelPauseTimer = null;
+let wheelVelocity = 0;
+
 const mod = (value, size) => ((value % size) + size) % size;
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const pauseAutoScrollByWheel = (event) => {
+  isAutoPaused = true;
+  autoRemainder = 0;
+
+  // 不阻止浏览器默认滚动，只额外给一点惯性
+  wheelVelocity += event.deltaY * WHEEL_POWER;
+  wheelVelocity = clamp(wheelVelocity, -WHEEL_MAX_SPEED, WHEEL_MAX_SPEED);
+
+  clearTimeout(wheelPauseTimer);
+
+  wheelPauseTimer = setTimeout(() => {
+    isAutoPaused = false;
+  }, WHEEL_PAUSE_TIME);
+};
 
 const jumpToMiddle = () => {
   isResettingScroll = true;
   window.scrollTo(0, RESET_SCROLL_Y);
   lastScrollY = RESET_SCROLL_Y;
+
   requestAnimationFrame(() => {
     isResettingScroll = false;
   });
@@ -43,6 +77,7 @@ const handlePageScroll = () => {
   lastScrollY = currentY;
 
   const maxY = document.documentElement.scrollHeight - window.innerHeight;
+
   if (!isResettingScroll && (currentY < RESET_BUFFER || currentY > maxY - RESET_BUFFER)) {
     jumpToMiddle();
   }
@@ -67,6 +102,12 @@ const prepareGrid = (grid) => {
   grid.style.setProperty('--grid-columns', '3');
   grid.style.setProperty('--grid-gap', '1vw');
 
+  gsap.set(gridWrap, {
+    transformStyle: 'preserve-3d',
+    force3D: true,
+    willChange: 'transform',
+  });
+
   return {
     grid,
     gridWrap,
@@ -81,7 +122,11 @@ const gridStates = Array.from(grids).map(prepareGrid);
 const refreshGridSizes = () => {
   gridStates.forEach((state) => {
     const firstRepeatedItem = state.items[state.originalCount];
-    state.blockHeight = Math.max(1, firstRepeatedItem ? firstRepeatedItem.offsetTop : state.gridWrap.scrollHeight / 3);
+
+    state.blockHeight = Math.max(
+      1,
+      firstRepeatedItem ? firstRepeatedItem.offsetTop : state.gridWrap.scrollHeight / 3,
+    );
   });
 };
 
@@ -90,9 +135,12 @@ const renderGrid = (state) => {
 
   gsap.set(state.gridWrap, {
     y,
-    xPercent: -4,
+    xPercent: -20,
     rotationY: 30,
     transformOrigin: '0% 50%',
+    transformStyle: 'preserve-3d',
+    force3D: true,
+    willChange: 'transform',
   });
 
   state.items.forEach((item) => {
@@ -100,15 +148,44 @@ const renderGrid = (state) => {
     const centerY = rect.top + rect.height / 2;
     const distance = (centerY - window.innerHeight / 2) / (window.innerHeight / 2);
     const limited = clamp(distance, -1, 1);
-    const depth = (1 - Math.abs(limited)) * 420;
-    const brightness = clamp(120 - Math.abs(limited) * 85, 28, 120);
+
+    const depth = (1 - Math.abs(limited)) * 220;
+
+    // 以前这里是 brightness，会在白色背景下变成黑色阴影
+    // 现在改成 opacity：中间最清楚，顶端/底端变透明
+    const opacity = clamp(
+      CENTER_OPACITY - Math.abs(limited) * (CENTER_OPACITY - EDGE_OPACITY),
+      EDGE_OPACITY,
+      CENTER_OPACITY,
+    );
+
+    // 越靠近屏幕中间、越往前的图片层级越高，减少 3D 排序错误导致的局部消失
+    const visualPriority = Math.round(depth * 10);
 
     gsap.set(item, {
-      rotationX: limited * 70,
+      rotationX: limited * 30,
       z: depth,
-      filter: `brightness(${brightness}%)`,
+      zIndex: visualPriority,
+      opacity,
+      filter: 'none',
       transformOrigin: '50% 50%',
+      transformStyle: 'preserve-3d',
+      backfaceVisibility: 'visible',
+      force3D: true,
+      willChange: 'transform, opacity',
     });
+
+    const inner = item.querySelector('.grid__item-inner');
+
+    if (inner) {
+      gsap.set(inner, {
+        backfaceVisibility: 'hidden',
+        transformStyle: 'preserve-3d',
+        force3D: true,
+        willChange: 'transform',
+        z: 1,
+      });
+    }
   });
 };
 
@@ -116,12 +193,23 @@ const tick = (time) => {
   const deltaTime = lastFrameTime ? (time - lastFrameTime) / 1000 : 0;
   lastFrameTime = time;
 
-  autoRemainder += AUTO_SCROLL_SPEED * deltaTime;
-  const wholePixels = Math.trunc(autoRemainder);
+  // 鼠标滚轮松开后，继续补一点惯性滚动
+  if (Math.abs(wheelVelocity) > WHEEL_MIN_SPEED) {
+    window.scrollBy(0, wheelVelocity);
+    wheelVelocity *= WHEEL_FRICTION;
+  } else {
+    wheelVelocity = 0;
 
-  if (wholePixels !== 0) {
-    autoRemainder -= wholePixels;
-    window.scrollBy(0, wholePixels);
+    // 惯性结束，并且没有处于滚轮暂停期时，才恢复自动滚动
+    if (!isAutoPaused) {
+      autoRemainder += AUTO_SCROLL_SPEED * deltaTime;
+      const wholePixels = Math.trunc(autoRemainder);
+
+      if (wholePixels !== 0) {
+        autoRemainder -= wholePixels;
+        window.scrollBy(0, wholePixels);
+      }
+    }
   }
 
   gridStates.forEach(renderGrid);
@@ -129,6 +217,10 @@ const tick = (time) => {
 };
 
 window.addEventListener('scroll', handlePageScroll, { passive: true });
+
+// 不拦截滚轮，滚轮本身还是正常控制页面
+window.addEventListener('wheel', pauseAutoScrollByWheel, { passive: true });
+
 window.addEventListener('resize', refreshGridSizes);
 
 preloadImages('.grid__item-inner').then(() => {
