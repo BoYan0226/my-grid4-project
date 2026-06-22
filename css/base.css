@@ -115,8 +115,9 @@ a:not(.card__image):focus-visible {
 
 main {
 	position: relative;
-	overflow: hidden;
+	overflow: visible;
 	width: 100%;
+	min-height: 14000px;
 }
 
 .frame {
@@ -276,11 +277,12 @@ body #cdawrap {
 
 .content {
 	position: relative;
-	margin-bottom: 20vh;
+	margin-bottom: 0;
+	min-height: 14000px;
 }
 
 .content--spacing {
-	margin-bottom: 100vh;
+	margin-bottom: 0;
 }
 
 .content__title {
@@ -381,5 +383,49 @@ body #cdawrap {
 
 	body #cdawrap {
 	    justify-self: end;
+	}
+}
+
+
+/* New infinite-scroll scheme */
+html {
+	scroll-behavior: auto;
+}
+
+body {
+	overflow-y: scroll;
+}
+
+.grid {
+	position: sticky;
+	top: 0;
+	height: 100vh;
+	place-items: center start;
+	padding: 2rem 0 2rem 2rem;
+	overflow: hidden;
+}
+
+.grid-wrap {
+	will-change: transform;
+	transform-style: preserve-3d;
+}
+
+.grid__item {
+	will-change: transform, filter;
+	transform-style: preserve-3d;
+	backface-visibility: hidden;
+}
+
+.grid__item-inner {
+	will-change: transform;
+	transform: scale(var(--grid-inner-scale));
+}
+
+@media screen and (max-width: 760px) {
+	.grid {
+		padding-left: 1rem;
+	}
+	.grid-wrap {
+		width: 85vw !important;
 	}
 }
