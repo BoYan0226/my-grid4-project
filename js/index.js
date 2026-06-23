@@ -142,7 +142,8 @@ const refreshGridSizes = () => {
 };
 
 const renderGrid = (state) => {
-  const y = -state.blockHeight - mod(virtualScroll * WALL_SCROLL_SPEED, state.blockHeight);
+  const TOP_SAFE_OFFSET = 100;
+  const y = TOP_SAFE_OFFSET - state.blockHeight - mod(virtualScroll * WALL_SCROLL_SPEED, state.blockHeight);
 
   gsap.set(state.gridWrap, {
     y,
