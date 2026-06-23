@@ -2,13 +2,12 @@ import { preloadImages } from './utils.js';
 
 const grids = document.querySelectorAll('.grid');
 
-// Real page scroll limits. The page is very tall, and when the scroll
-// reaches either edge we silently move it back to the middle. The image
-// wall uses virtualScroll, so this reset is visually seamless.
+// 页面滚动边界。页面很高，当滚动接近顶部或底部时，悄悄跳回中间。
+// 图片墙使用 virtualScroll，所以这个重置看起来是连续的。
 const RESET_SCROLL_Y = 6000;
 const RESET_BUFFER = 1800;
 
-const AUTO_SCROLL_SPEED = 70; // px / second. Raise this if you want faster auto scroll.
+const AUTO_SCROLL_SPEED = 70; // px / second. 数值越大，自动滚动越快。
 const WALL_SCROLL_SPEED = 0.72;
 
 // 滚轮惯性参数
@@ -39,7 +38,7 @@ const pauseAutoScrollByWheel = (event) => {
   isAutoPaused = true;
   autoRemainder = 0;
 
-  // 不阻止浏览器默认滚动，只额外给一点惯性
+  // 不阻止浏览器默认滚动，只额外加一点惯性。
   wheelVelocity += event.deltaY * WHEEL_POWER;
   wheelVelocity = clamp(wheelVelocity, -WHEEL_MAX_SPEED, WHEEL_MAX_SPEED);
 
@@ -66,7 +65,7 @@ const handlePageScroll = () => {
   if (!isResettingScroll) {
     const delta = currentY - lastScrollY;
 
-    // Ignore extreme deltas caused by our own edge reset.
+    // 忽略由跳回中间造成的极大滚动差值。
     if (Math.abs(delta) < 1200) {
       virtualScroll += delta;
     }
@@ -85,7 +84,7 @@ const prepareGrid = (grid) => {
   const gridWrap = grid.querySelector('.grid-wrap');
   const originalItems = Array.from(gridWrap.querySelectorAll('.grid__item'));
 
-  // Three identical sets make the vertical loop seamless.
+  // 复制两份，形成三组相同图片，让纵向循环更连续。
   for (let copyIndex = 0; copyIndex < 2; copyIndex += 1) {
     originalItems.forEach((item) => {
       const clone = item.cloneNode(true);
@@ -96,7 +95,7 @@ const prepareGrid = (grid) => {
 
   grid.style.setProperty('--grid-width', '52vw');
   grid.style.setProperty('--perspective', '3000px');
-  grid.style.setProperty('--grid-item-ratio', '0.8');
+  grid.style.setProperty('--grid-item-ratio', '0.6667');
   grid.style.setProperty('--grid-columns', '3');
   grid.style.setProperty('--grid-gap', '1vw');
 
@@ -141,23 +140,26 @@ const renderGrid = (state) => {
     willChange: 'transform',
   });
 
+  // 不用 item.getBoundingClientRect() 算位置。
+  // 因为它会读到上一帧 3D 旋转后的尺寸，容易造成下端回缩/抖动。
+  const gridRect = state.grid.getBoundingClientRect();
+  const baseTop = gridRect.top + state.gridWrap.offsetTop + y;
+
   state.items.forEach((item) => {
-    const rect = item.getBoundingClientRect();
-    const centerY = rect.top + rect.height / 2;
+    const centerY = baseTop + item.offsetTop + item.offsetHeight / 2;
     const distance = (centerY - window.innerHeight / 2) / (window.innerHeight / 2);
     const limited = clamp(distance, -1, 1);
 
-    const depth = (1 - Math.abs(limited)) * 220;
+    const depth = 60 + (1 - Math.abs(limited)) * 150;
 
-    // 以前这里是 brightness，会在白色背景下变成黑色阴影
-    // 现在改成 opacity：中间最清楚，顶端/底端变透明
+    // 中间最清楚，顶端/底端稍微透明。
     const opacity = clamp(
       CENTER_OPACITY - Math.abs(limited) * (CENTER_OPACITY - EDGE_OPACITY),
       EDGE_OPACITY,
       CENTER_OPACITY,
     );
 
-    // 越靠近屏幕中间、越往前的图片层级越高，减少 3D 排序错误导致的局部消失
+    // 越靠近屏幕中间、越往前的图片层级越高，减少 3D 排序错误导致的局部消失。
     const visualPriority = Math.round(depth * 10);
 
     gsap.set(item, {
@@ -166,6 +168,8 @@ const renderGrid = (state) => {
       zIndex: visualPriority,
       opacity,
       filter: 'none',
+      overflow: 'visible',
+      clipPath: 'none',
       transformOrigin: '50% 50%',
       transformStyle: 'preserve-3d',
       backfaceVisibility: 'visible',
@@ -177,10 +181,11 @@ const renderGrid = (state) => {
 
     if (inner) {
       gsap.set(inner, {
-        backfaceVisibility: 'hidden',
+        backfaceVisibility: 'visible',
         transformStyle: 'preserve-3d',
         force3D: true,
         willChange: 'transform',
+        borderRadius: 'inherit',
         z: 1,
       });
     }
@@ -191,14 +196,14 @@ const tick = (time) => {
   const deltaTime = lastFrameTime ? (time - lastFrameTime) / 1000 : 0;
   lastFrameTime = time;
 
-  // 鼠标滚轮松开后，继续补一点惯性滚动
+  // 鼠标滚轮松开后，继续补一点惯性滚动。
   if (Math.abs(wheelVelocity) > WHEEL_MIN_SPEED) {
     window.scrollBy(0, wheelVelocity);
     wheelVelocity *= WHEEL_FRICTION;
   } else {
     wheelVelocity = 0;
 
-    // 惯性结束，并且没有处于滚轮暂停期时，才恢复自动滚动
+    // 惯性结束，并且没有处于滚轮暂停期时，恢复自动滚动。
     if (!isAutoPaused) {
       autoRemainder += AUTO_SCROLL_SPEED * deltaTime;
       const wholePixels = Math.trunc(autoRemainder);
@@ -216,7 +221,7 @@ const tick = (time) => {
 
 window.addEventListener('scroll', handlePageScroll, { passive: true });
 
-// 不拦截滚轮，滚轮本身还是正常控制页面
+// 不拦截滚轮，滚轮本身还是正常控制页面。
 window.addEventListener('wheel', pauseAutoScrollByWheel, { passive: true });
 
 window.addEventListener('resize', refreshGridSizes);
