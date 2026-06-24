@@ -95,6 +95,16 @@ const prepareGrid = (grid) => {
 
   const items = Array.from(gridWrap.querySelectorAll('.grid__item'));
 
+  const shells = items.map((item) => {
+    const shell = document.createElement('div');
+    shell.className = 'grid__item-shell';
+    item.before(shell);
+    shell.appendChild(item);
+    return shell;
+  });
+
+  const innerItems = items.map((item) => item.querySelector('.grid__item-inner'));
+
   grid.style.setProperty('--grid-width', '52vw');
   grid.style.setProperty('--perspective', '3000px');
   grid.style.setProperty('--grid-item-ratio', '0.6667');
@@ -108,8 +118,7 @@ const prepareGrid = (grid) => {
   });
 
   // 固定样式只设置一次，不要每帧反复写。
-  gsap.set(items, {
-    filter: 'none',
+  gsap.set(shells, {
     overflow: 'visible',
     clipPath: 'none',
     transformOrigin: '50% 50%',
@@ -122,7 +131,8 @@ const prepareGrid = (grid) => {
   return {
     grid,
     gridWrap,
-    items,
+    shells,
+    innerItems,
     originalCount: originalItems.length,
     blockHeight: 1,
   };
@@ -132,7 +142,7 @@ const gridStates = Array.from(grids).map(prepareGrid);
 
 const refreshGridSizes = () => {
   gridStates.forEach((state) => {
-    const firstRepeatedItem = state.items[state.originalCount];
+    const firstRepeatedItem = state.shells[state.originalCount];
 
     state.blockHeight = Math.max(
       1,
@@ -147,7 +157,7 @@ const renderGrid = (state) => {
 
   gsap.set(state.gridWrap, {
     y,
-    xPercent: 0,
+    xPercent: -20,
     rotationY: 30,
     transformOrigin: '0% 50%',
   });
@@ -156,12 +166,12 @@ const renderGrid = (state) => {
   const baseTop = gridRect.top + state.gridWrap.offsetTop + y;
   const viewportCenter = window.innerHeight / 2;
 
-  state.items.forEach((item, index) => {
-    const centerY = baseTop + item.offsetTop + item.offsetHeight / 2;
+  state.shells.forEach((shell, index) => {
+    const centerY = baseTop + shell.offsetTop + shell.offsetHeight / 2;
     const distance = (centerY - viewportCenter) / viewportCenter;
     const limited = clamp(distance, -1, 1);
 
-    const depth = 60 + (1 - Math.abs(limited)) * 150;
+    const depth = 10 + (1 - Math.abs(limited)) * 300;
 
     const opacity = clamp(
       CENTER_OPACITY - Math.abs(limited) * (CENTER_OPACITY - EDGE_OPACITY),
@@ -169,12 +179,18 @@ const renderGrid = (state) => {
       CENTER_OPACITY,
     );
 
-    const visualPriority = Math.round(depth * 100) + index;
+    const column = index % 3;
+    const columnPriority = 3 - column;
+    const visualPriority = Math.round(depth * 100) + columnPriority;
 
-    gsap.set(item, {
+    gsap.set(shell, {
       rotationX: limited * 30,
-      z: depth + index * 0.001,
+      z: depth + columnPriority * 0.001,
       zIndex: visualPriority,
+      opacity: 1,
+    });
+
+    gsap.set(state.innerItems[index], {
       opacity,
     });
   });
