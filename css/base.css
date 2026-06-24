@@ -38,7 +38,7 @@ html {
 body {
 	margin: 0;
 	color: var(--color-text);
-	background-color: var(--color-bg);
+	background: #e4dfbd;
 	font-family: "moret-variable", serif;
 	font-variation-settings: "ital" 0, "wght" 300;
 	-webkit-font-smoothing: antialiased;
@@ -421,7 +421,7 @@ body #cdawrap {
 	overflow: visible;
 
 	/* 放大图片 */
-	transform: scale(0.9);
+	transform: scale(1);
 
 	transform-style: preserve-3d;
 	backface-visibility: visible;

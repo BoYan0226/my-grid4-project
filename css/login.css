@@ -1,15 +1,16 @@
 .login-panel {
 	position: fixed;
 	top: 50%;
-	right: 35vw;
+	left: 50%;
+	right: auto;
 	z-index: 100;
-	width: min(410px, 34vw);
+	width: min(500px, 34vw);
 	padding: 32px;
 	color: #202124;
 	background: rgba(255, 255, 255, 0.94);
 	border: 1px solid rgba(29, 31, 36, 0.08);
 	border-radius: 10px;
-	transform: translateY(-50%);
+	transform: translate(-50%, -50%);
 	-webkit-backdrop-filter: blur(14px);
 	backdrop-filter: blur(14px);
 }
@@ -182,9 +183,11 @@
 
 @media screen and (max-width: 1024px) {
 	.login-panel {
-		right: 24px;
+		left: 50%;
+		right: auto;
 		width: min(380px, 39vw);
 		padding: 28px;
+		transform: translate(-50%, -50%);
 	}
 }
 
