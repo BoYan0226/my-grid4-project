@@ -136,24 +136,6 @@ main {
 	min-height: 14000px;
 }
 
-.frame {
-	position: relative;
-	width: 100%;
-	padding: 1rem;
-	display: grid;
-	grid-template-columns: 100%;
-	grid-template-areas: "back" "prev" "sponsor";
-	grid-gap: 0.5rem;
-	justify-items: start;
-	align-self: start;
-	justify-self: start;
-	pointer-events: none;
-	align-items: center;
-	text-transform: uppercase;
-	font-size: 0.85rem;
-	background: var(--color-bg-alt);
-}
-
 body #cdawrap {
 	justify-self: start;
 }
@@ -214,15 +196,6 @@ body #cdawrap {
 	grid-area: prev;
 }
 
-.intro {
-	height: calc(100vh - 3rem);
-	text-align: center;
-	place-items: center;
-	display: grid;
-	margin-bottom: 30vh;
-	background: linear-gradient(0deg, transparent, var(--color-bg-alt));
-}
-
 .intro__title {
 	place-items: center;
 	margin: 0;
@@ -265,32 +238,6 @@ body #cdawrap {
 	left: 50%;
 }
 
-.card-wrap {
-	margin-top: 5vh;
-	display: grid;
-	grid-gap: 2rem;
-	grid-auto-flow: row;
-	grid-template-columns: 250px;
-}
-
-.card__image {
-	display: block;
-	border-radius: 7px;
-	background-size: cover;
-	background-position: 50% 50%;
-	width: 100%;
-	height: auto;
-	aspect-ratio: 4 / 3;
-	filter: contrast(0.8);
-}
-
-.credits {
-	font-size: 1.5rem;
-	text-align: center;
-	margin: 50vh auto 0;
-	padding-bottom: 50vh;
-}
-
 .content {
 	position: relative;
 	margin-bottom: 0;
@@ -299,21 +246,6 @@ body #cdawrap {
 
 .content--spacing {
 	margin-bottom: 0;
-}
-
-.content__title {
-	position: absolute;
-	height: 100vh;
-	width: 100vw;
-	top: 50%;
-	left: 50%;
-	margin: -50vh 0 0 -50vw;
-	padding: 0 10vw;
-	display: grid;
-	place-items: center;
-	text-align: center;
-	font-weight: 300;
-	font-size: clamp(1.5rem, 15vw, 6.5rem);
 }
 
 .content__title--top {
@@ -332,12 +264,6 @@ body #cdawrap {
 .content__title--right {
 	justify-items: end;
 	text-align: right;
-}
-
-.outro {
-	display: grid;
-	place-items: center;
-	margin: 40vh 0;
 }
 
 .grid {
@@ -389,24 +315,6 @@ body #cdawrap {
 	display: none;
 }
 
-/* 让包含工牌外框的新图片铺满整个区域 */
-.grid__item-inner {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	background-size: 100% 100%;
-	background-position: center;
-	background-repeat: no-repeat;
-	border: 0;
-	border-radius: 0;
-	box-shadow: none;
-	overflow: visible;
-	transform-style: preserve-3d;
-	backface-visibility: visible;
-	will-change: transform, opacity;
-	z-index: 1;
-}
 .grid__item-inner {
 	position: absolute;
 	inset: 0;
